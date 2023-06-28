@@ -38,13 +38,18 @@ resource "aws_route" "this" {
   network_interface_id   = aws_network_interface.this.id
 }
 
-# AMI of the latest Amazon Linux 2 
+data "aws_ec2_instance_type" "this" {
+  for_each = var.instance_types
+  instance_type = each.value
+}
+
+# AMI of the latest Amazon Linux 2
 data "aws_ami" "this" {
   most_recent = true
   owners      = ["amazon"]
   filter {
     name   = "architecture"
-    values = ["x86_64"]
+    values = tolist(setintersection(flatten(values(data.aws_ec2_instance_type.this)[*].supported_architectures)))
   }
   filter {
     name   = "root-device-type"
@@ -58,16 +63,17 @@ data "aws_ami" "this" {
     name   = "virtualization-type"
     values = ["hvm"]
   }
-  filter {
-    name   = "block-device-mapping.volume-type"
-    values = ["gp2"]
-  }
 }
 
 resource "aws_launch_template" "this" {
   name_prefix = var.name
   image_id    = var.image_id != "" ? var.image_id : data.aws_ami.this.id
   key_name    = var.key_name
+
+  metadata_options {
+    http_endpoint = "enabled"
+    http_tokens   = "required"
+  }
 
   iam_instance_profile {
     arn = aws_iam_instance_profile.this.arn
@@ -90,22 +96,22 @@ resource "aws_launch_template" "this" {
       # https://cloudinit.readthedocs.io/en/latest/topics/modules.html
       write_files : concat([
         {
-          path : "/opt/nat/runonce.sh",
-          content : templatefile("${path.module}/runonce.sh", { eni_id = aws_network_interface.this.id }),
+          path : "/opt/fck-nat/post-install.sh",
+          content : templatefile("${path.module}/post-install.sh", { eni_id = aws_network_interface.this.id }),
           permissions : "0755",
         },
         {
-          path : "/opt/nat/snat.sh",
-          content : file("${path.module}/snat.sh"),
+          path : "/opt/fck-nat/fck-nat.sh",
+          content : file("${path.module}/fck-nat.sh"),
           permissions : "0755",
         },
         {
-          path : "/etc/systemd/system/snat.service",
-          content : file("${path.module}/snat.service"),
+          path : "/etc/systemd/system/fck-nat.service",
+          content : file("${path.module}/fck-nat.service"),
         },
       ], var.user_data_write_files),
       runcmd : concat([
-        ["/opt/nat/runonce.sh"],
+        ["/opt/fck-nat/post-install.sh"],
       ], var.user_data_runcmd),
     })
   ]))
