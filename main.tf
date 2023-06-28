@@ -97,7 +97,7 @@ resource "aws_launch_template" "this" {
       write_files : concat([
         {
           path : "/opt/fck-nat/post-install.sh",
-          content : file("${path.module}/post-install.sh", { eni_id = aws_network_interface.this.id }),
+          content : templatefile("${path.module}/post-install.sh", { eni_id = aws_network_interface.this.id }),
           permissions : "0755",
         },
         {
