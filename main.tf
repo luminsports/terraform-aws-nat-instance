@@ -43,7 +43,7 @@ data "aws_ec2_instance_type" "this" {
   instance_type = each.value
 }
 
-# AMI of the latest Amazon Linux 2
+# AMI of the latest Amazon Linux 2023
 data "aws_ami" "this" {
   most_recent = true
   owners      = ["amazon"]
@@ -57,7 +57,7 @@ data "aws_ami" "this" {
   }
   filter {
     name   = "name"
-    values = ["amzn2-ami-hvm-*"]
+    values = ["al2023-ami-*"]
   }
   filter {
     name   = "virtualization-type"
@@ -97,21 +97,22 @@ resource "aws_launch_template" "this" {
       write_files : concat([
         {
           path : "/opt/fck-nat/post-install.sh",
-          content : templatefile("${path.module}/post-install.sh", { eni_id = aws_network_interface.this.id }),
+          content : templatefile("${path.module}/fck-nat/post-install.sh", { eni_id = aws_network_interface.this.id }),
           permissions : "0755",
         },
         {
           path : "/opt/fck-nat/fck-nat.sh",
-          content : file("${path.module}/fck-nat.sh"),
+          content : file("${path.module}/fck-nat/fck-nat.sh"),
           permissions : "0755",
         },
         {
           path : "/etc/systemd/system/fck-nat.service",
-          content : file("${path.module}/fck-nat.service"),
+          content : file("${path.module}/fck-nat/fck-nat.service"),
         },
       ], var.user_data_write_files),
       runcmd : concat([
         ["/opt/fck-nat/post-install.sh"],
+        ["/opt/templates/livepatch.sh"],
       ], var.user_data_runcmd),
     })
   ]))
