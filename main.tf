@@ -147,6 +147,17 @@ resource "aws_autoscaling_group" "this" {
     }
   }
 
+  instance_refresh {
+    strategy = "Rolling"
+    preferences {
+      min_healthy_percentage       = 50
+      max_healthy_percentage       = 200
+      skip_matching                = true
+      auto_rollback                = true
+      scale_in_protected_instances = "Refresh"
+    }
+  }
+
   dynamic "tag" {
     for_each = local.common_tags
     content {
