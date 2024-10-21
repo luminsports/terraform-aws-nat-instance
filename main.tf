@@ -202,11 +202,6 @@ resource "aws_iam_role_policy_attachment" "ssm" {
   role       = aws_iam_role.this.name
 }
 
-resource "aws_iam_role_policy_attachment" "ssm" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedEC2InstanceDefaultPolicy"
-  role       = aws_iam_role.this.name
-}
-
 resource "aws_iam_role_policy" "eni" {
   role        = aws_iam_role.this.name
   name_prefix = var.name
