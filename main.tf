@@ -97,7 +97,7 @@ resource "aws_launch_template" "this" {
       write_files : concat([
         {
           path : "/opt/fck-nat/post-install.sh",
-          content : templatefile("${path.module}/fck-nat/post-install.sh", { eni_id = aws_network_interface.this.id }),
+          content : templatefile("${path.module}/fck-nat/post-install.sh", { eni_id = aws_network_interface.this.id, eip_id = aws_eip.nat_eip.id }),
           permissions : "0755",
         },
         {
@@ -214,11 +214,19 @@ resource "aws_iam_role_policy" "eni" {
             "Action": [
                 "ec2:AttachNetworkInterface",
                 "ec2:ModifyNetworkInterfaceAttribute",
-                "ec2:DescribeInstances"
+                "ec2:DescribeInstances",
+                "ec2:AssociateAddress",
+                "ec2:DisassociateAddress"
             ],
             "Resource": "*"
         }
     ]
 }
 EOF
+}
+
+resource "aws_eip" "nat_eip" {
+  tags = merge(var.tags, {
+    "Name" = "${var.name}-eip"
+  })
 }
