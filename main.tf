@@ -115,7 +115,6 @@ resource "aws_launch_template" "this" {
       ], var.user_data_write_files),
       runcmd : concat([
         ["/opt/fck-nat/post-install.sh"],
-        ["/opt/templates/livepatch.sh"],
       ], var.user_data_runcmd),
     })
   ]))
