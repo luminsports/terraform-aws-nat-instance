@@ -153,7 +153,7 @@ resource "aws_autoscaling_group" "this" {
       min_healthy_percentage       = 0
       max_healthy_percentage       = 100
       skip_matching                = true
-      auto_rollback                = true
+      auto_rollback                = false
       scale_in_protected_instances = "Refresh"
     }
   }
