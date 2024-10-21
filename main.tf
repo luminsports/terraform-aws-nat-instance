@@ -32,8 +32,9 @@ resource "aws_network_interface" "this" {
 }
 
 resource "aws_route" "this" {
-  count                  = length(var.private_route_table_ids)
-  route_table_id         = var.private_route_table_ids[count.index]
+  for_each = var.private_route_table_ids
+
+  route_table_id         = each.value
   destination_cidr_block = "0.0.0.0/0"
   network_interface_id   = aws_network_interface.this.id
 }
@@ -57,7 +58,7 @@ data "aws_ami" "this" {
   }
   filter {
     name   = "name"
-    values = ["al2023-ami-*"]
+    values = ["*al2023-ami-minimal-*-kernel-*"]
   }
   filter {
     name   = "virtualization-type"
@@ -80,6 +81,8 @@ resource "aws_launch_template" "this" {
   }
 
   network_interfaces {
+    description                 = "${var.name} ephemeral public ENI"
+    subnet_id                   =  var.public_subnet
     associate_public_ip_address = true
     security_groups             = [aws_security_group.this.id]
     delete_on_termination       = true
@@ -126,9 +129,11 @@ resource "aws_autoscaling_group" "this" {
   desired_capacity    = var.enabled ? 1 : 0
   min_size            = var.enabled ? 1 : 0
   max_size            = 1
+  health_check_type   = "EC2"
   vpc_zone_identifier = [var.public_subnet]
 
   mixed_instances_policy {
+    spot_allocation_strategy = "price-capacity-optimized"
     instances_distribution {
       on_demand_base_capacity                  = var.use_spot_instance ? 0 : 1
       on_demand_percentage_above_base_capacity = var.use_spot_instance ? 0 : 100
