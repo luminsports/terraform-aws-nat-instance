@@ -133,10 +133,10 @@ resource "aws_autoscaling_group" "this" {
   vpc_zone_identifier = [var.public_subnet]
 
   mixed_instances_policy {
-    spot_allocation_strategy = "price-capacity-optimized"
     instances_distribution {
       on_demand_base_capacity                  = var.use_spot_instance ? 0 : 1
       on_demand_percentage_above_base_capacity = var.use_spot_instance ? 0 : 100
+      spot_allocation_strategy                 = "capacity-optimized"
     }
     launch_template {
       launch_template_specification {
