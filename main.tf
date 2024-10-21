@@ -32,7 +32,7 @@ resource "aws_network_interface" "this" {
 }
 
 resource "aws_route" "this" {
-  for_each = var.private_route_table_ids
+  for_each = toset(var.private_route_table_ids)
 
   route_table_id         = each.value
   destination_cidr_block = "0.0.0.0/0"
