@@ -44,22 +44,25 @@ data "aws_ec2_instance_type" "this" {
   instance_type = each.value
 }
 
-# AMI of the latest Amazon Linux 2023
 data "aws_ami" "this" {
   most_recent = true
-  owners      = ["amazon"]
+  owners      = ["568608671756"]
+
+  filter {
+    name   = "name"
+    values = ["fck-nat-al2023-hvm-*"]
+  }
+
   filter {
     name   = "architecture"
-    values = tolist(setintersection(flatten(values(data.aws_ec2_instance_type.this)[*].supported_architectures)))
+    values = ["arm64"]
   }
+
   filter {
     name   = "root-device-type"
     values = ["ebs"]
   }
-  filter {
-    name   = "name"
-    values = ["*al2023-ami-minimal-*-kernel-*"]
-  }
+
   filter {
     name   = "virtualization-type"
     values = ["hvm"]
@@ -88,36 +91,20 @@ resource "aws_launch_template" "this" {
     delete_on_termination       = true
   }
 
-  tag_specifications {
-    resource_type = "instance"
-    tags          = local.common_tags
+  dynamic "tag_specifications" {
+    for_each = ["instance", "network-interface", "volume"]
+
+    content {
+      resource_type = tag_specifications.value
+
+      tags          = local.common_tags
+    }
   }
 
-  user_data = base64encode(join("\n", [
-    "#cloud-config",
-    yamlencode({
-      # https://cloudinit.readthedocs.io/en/latest/topics/modules.html
-      write_files : concat([
-        {
-          path : "/opt/fck-nat/post-install.sh",
-          content : templatefile("${path.module}/fck-nat/post-install.sh", { eni_id = aws_network_interface.this.id, eip_id = aws_eip.nat_eip.id }),
-          permissions : "0755",
-        },
-        {
-          path : "/opt/fck-nat/fck-nat.sh",
-          content : file("${path.module}/fck-nat/fck-nat.sh"),
-          permissions : "0755",
-        },
-        {
-          path : "/etc/systemd/system/fck-nat.service",
-          content : file("${path.module}/fck-nat/fck-nat.service"),
-        },
-      ], var.user_data_write_files),
-      runcmd : concat([
-        ["/opt/fck-nat/post-install.sh"],
-      ], var.user_data_runcmd),
-    })
-  ]))
+  user_data = base64encode(templatefile("${path.module}/user_data.sh", {
+    TERRAFORM_ENI_ID                 = aws_network_interface.this.id
+    TERRAFORM_EIP_ID                 = aws_eip.nat_eip.id
+  }))
 
   description = "Launch template for NAT instance ${var.name}"
   tags        = local.common_tags
